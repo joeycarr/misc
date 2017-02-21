@@ -1,0 +1,71 @@
+#!/usr/bin/env python
+
+import argparse, re, sys
+
+MULTIPLIERS = [1, 60, 3600] # sec, min, hrs
+DIVISORS = [60, 60, 3600]
+
+def parse_args():
+    ag = argparse.ArgumentParser(
+        description='Add, subtract, or convert representations of time. As a convenience, you can separate the time fields with a dot (.) in lieu of the typical colon (:).')
+    ag.add_argument('-s', '--seconds',
+                    action='store_true',
+                    help='Display the result as a number of seconds rather than the default HH:MM:SS.')
+    ag.add_argument('term',
+                    nargs='+',
+                    type=str,
+                    help='A time represented in seconds, e.g. "90", or as hours, minutes, and seconds, e.g. "1:20:37". By default, all terms are summed. If you pass a negative sign, subsequent terms are subtracted; if you pass a plus sign, subsequent terms are again summed.')
+    return ag.parse_args()
+
+class ParseError(Exception):
+    pass
+
+def parsetime(t):
+    if len(t) < 1:
+        raise ParseError('empty string')
+    xes = re.split('[:;.,]', t)
+    xes.reverse()
+    seconds = 0
+    if len(xes) > len(MULTIPLIERS):
+        raise ParseError('the time representation is limited to three fields, representing seconds, minutes, and hours, i.e. HH:MM:SS')
+    for i, x in enumerate(xes):
+        seconds += int(x)*MULTIPLIERS[i]
+    return seconds
+
+def formattime(t):
+    r = []
+    for d in DIVISORS:
+        if t > 0:
+            r.append( t % d )
+            t = t / d
+    if len(r) < 2:
+        r.append(0)
+    return ':'.join(reversed( ['{:02d}'.format(x) for x in r] ))
+
+def main():
+    args = parse_args()
+
+    sign = 1
+    total = 0
+
+    format = 'default'
+
+    for term in args.term:
+        if term == '+':
+            sign = 1
+        elif term == '-':
+            sign = -1
+        else:
+            try:
+                total += sign * parsetime(term)
+            except ParseError, e:
+                print("Unable to parse '{0}' as a time: {1}.".format(x, e))
+                sys.exit(1)
+
+    if args.seconds:
+        print(total)
+    else:
+        print(formattime(total))
+
+if __name__ == '__main__':
+    main()

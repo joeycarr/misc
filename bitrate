@@ -1,0 +1,59 @@
+#!/usr/bin/env python
+
+'''Determines the video bitrate of a movie file.
+'''
+
+import argparse
+import json
+import logging
+import os
+import subprocess
+import sys
+
+from signal import signal, SIGPIPE, SIG_DFL
+
+# Ignore SIG_PIPE (http://docs.python.org/library/signal.html).
+# Ensures that if this gets piped to head or cmp or another utility
+# that terminates the tool's output early, then it won't generate a
+# bunch of stack traces.
+signal(SIGPIPE,SIG_DFL) 
+
+logging.basicConfig(format='%(message)s',
+                    level=logging.ERROR,
+                    stream=sys.stderr)
+log = logging.getLogger('bitrate')
+
+def parse_args():
+    ap = argparse.ArgumentParser(
+        description='''Determines the video bitrate of a movie file.''')
+
+    ap.add_argument('movie_file',
+                    metavar='movie_file',
+                    type=argparse.FileType('rb'),
+                    help='The file to examine. Should be a file type '
+                    'supported by ffmpeg with a single video stream.') 
+
+    return ap.parse_args()
+
+def get_bitrate(abspath):
+    jstr = subprocess.check_output(['ffprobe',
+                                    '-show_streams',
+                                    '-select_streams', 'v',
+                                    '-print_format', 'json',
+                                    abspath
+                                    ],
+                                   stderr=open('/dev/null')
+                                   )
+    info = json.loads(jstr)
+    return info['streams'][0]['bit_rate']
+
+def main():
+    args = parse_args()
+
+    abspath = os.path.abspath(args.movie_file.name)
+
+    sys.stdout.write(get_bitrate(abspath))
+    sys.stdout.write('\n')
+
+if __name__ == '__main__':
+    main()

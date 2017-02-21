@@ -1,0 +1,68 @@
+#!/bin/bash
+
+set -e
+
+function usage(){
+    cat << 'EOF' >&2
+usage: md5dir [-h] [-s size] directory [...]
+
+   -h    display this message
+
+   -s    The minimum size of files to checksum; smaller files are
+         ignored. Use the suffixes k, m, g, or t specify standard SI
+         unit prefixes for 10^3, 10^6, 10^9, and 10^12
+         respectively. The default suffix is k. The parameter must be
+         an integer.
+
+   directory  Specify one or more directories to check.
+
+EOF
+}
+
+function parsesize(){
+    n="${1%?}" # everything but the last character
+    case "${1: -1}" in
+	[[:digit:]]) echo "$1";;
+	k|K) echo "$n";;
+	m|M) echo "$(($n * 10**3))";;
+	g|G) echo "$(($n * 10**6))";;
+	t|T) echo "$(($n * 10**9))";;
+	*)
+	    echo "Unrecognized file size: $1"
+	    return 1
+    esac
+}
+
+[ $# -eq 0 ] && { usage; exit 1; }
+
+minsize=-1
+
+while getopts 's:h' opt; do
+    case $opt in
+	s) minsize=`parsesize "$OPTARG"`;;
+	h) 
+	    usage
+	    exit 0;;
+	\?)
+	    echo "Invalid option: -$OPTARG" >&2
+	    usage
+	    ;;
+    esac
+done
+
+shift $(( ${OPTIND} - 1 ))
+
+# For loop over the remaining positional parameters, which should be
+# directories.
+for directory; do
+    pushd "$directory" > /dev/null
+    find . -type f | {
+	while read f; do
+	    size=`du -k "$f" | cut -f 1`
+	    if [ $minsize -eq -1 ] || [ $size -ge $minsize ]; then
+		md5 "$f"
+	    fi
+	done
+    }
+    popd > /dev/null
+done

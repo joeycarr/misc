@@ -1,0 +1,58 @@
+#!/usr/bin/env python
+
+'''Copies the lines from the input to output in a random order.
+'''
+
+import argparse
+import logging
+import sys
+
+from random import shuffle
+from signal import signal, SIGPIPE, SIG_DFL
+
+# Ignore SIG_PIPE (http://docs.python.org/library/signal.html).
+# Ensures that if this tool gets piped to head or cmp or another
+# utility that terminates the tool's output early, then it won't
+# generate a bunch of stack traces.
+signal(SIGPIPE,SIG_DFL) 
+
+logging.basicConfig(format='%(message)s',
+                    level=logging.ERROR,
+                    stream=sys.stderr)
+log = logging.getLogger('shuffle')
+
+def parse_args():
+    ap = argparse.ArgumentParser(
+        description='''Copies the lines from the input to output in a
+    random order. Since this reads the entire input into memory, large
+    files may be very slow.''')
+
+    ap.add_argument('infile',
+                    metavar='infile',
+                    nargs='?',
+		    default=sys.stdin,
+                    type=argparse.FileType('r'),
+                    help='''The file containing the source
+                    text. Defaults to standard input. Use '-' to
+                    signify standard input explicitly.''')
+
+    ap.add_argument('outfile',
+                    metavar='outfile',
+                    nargs='?',
+		    default=sys.stdout,
+                    type=argparse.FileType('w'),
+                    help='''The destination file to write random lines
+                    to. Defaults to standard output. Use '-' to
+                    signify standard output explicitly.''')
+
+    return ap.parse_args()
+
+def main():
+    args = parse_args()
+
+    lines = args.infile.readlines()
+    shuffle(lines)
+    args.outfile.write(''.join(lines))
+
+if __name__ == '__main__':
+    main()

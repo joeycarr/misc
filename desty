@@ -1,0 +1,94 @@
+#!/usr/bin/env python
+
+import argparse
+import sys
+
+from bs4 import BeautifulSoup
+from signal import signal, SIGPIPE, SIG_DFL
+
+# Ignore SIG_PIPE (http://docs.python.org/library/signal.html).
+# Ensures that if this gets piped to head or cmp or another utility
+# that terminates the tool's output early, then it won't generate a
+# bunch of stack traces.
+signal(SIGPIPE,SIG_DFL) 
+
+def parse_args():
+    parser = argparse.ArgumentParser(
+        description='''Remove styles from input HTML fragments
+                       leaving structural element intact.''')
+    parser.add_argument('infile', nargs='?', type=argparse.FileType('r'),
+                    default=sys.stdin)
+    parser.add_argument('outfile', nargs='?', type=argparse.FileType('r'),
+                    default=sys.stdout)
+
+    return parser.parse_args();
+
+# Find all the empty tags and remove them. Since removing a tag might
+# produce another empty tag, we repeat until we stop finding empty
+# tags. Note that whitespace characters aren't considered empty.
+def remove_empties(soup):
+    found_empty = True # Loop behaves like a do/while
+    while found_empty:
+        found_empty = False
+        for tag in soup.find_all(True):
+            # Avoid removing self-closing tags like <br />
+            if len(tag.contents) == 0 and not tag.is_empty_element:
+                tag.decompose()
+                found_empty = True
+
+# If an <em> or <strong> tag's first child is a duplicate, then we
+# remove the duplicate. This doesn't need repeated application like
+# the remove_empties procedure.
+def remove_doubles(soup):
+    for tag in soup.find_all(True):
+        try:
+            if tag.name in ['em', 'strong'] and \
+                    tag.name == tag.contents[0].name:
+                tag.unwrap()
+         # the first child is text
+        except AttributeError:
+            pass
+         # the tag is empty
+        except IndexError:
+            pass
+
+def main():
+    args = parse_args();
+    soup = BeautifulSoup(args.infile, 'lxml')
+
+    for tag in soup.find_all(True):
+        if tag.name == 'span' and \
+                tag.has_attr('style') and \
+                'bold' in tag['style'].lower():
+            tag.name = 'strong';
+            del tag.attrs['style']
+
+        elif tag.name == 'span' and \
+                tag.has_attr('style') and \
+                'italic' in tag['style'].lower():
+            tag.name = 'em';
+            del tag['style']
+
+        elif tag.name == 'i':
+            tag.name = 'em'
+
+        elif tag.name == 'b':
+            tag.name = 'strong'
+
+        elif tag.name in ['span', 'font']:
+            tag.unwrap()
+
+        elif tag.has_attr('style'):
+            del tag['style']
+
+    remove_empties(soup)
+    remove_doubles(soup)
+    
+    for child in soup.body.children:
+        try:
+            args.outfile.write(child.prettify())
+        except AttributeError:
+            args.outfile.write(child)
+
+if __name__ == '__main__':
+    main()

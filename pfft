@@ -1,0 +1,80 @@
+#!/usr/bin/env python
+
+import argparse
+import matplotlib.pyplot as plt
+import matplotlib.cm as cm
+import numpy as np
+import skimage
+
+from scipy.fftpack import fft2, fftn, fftshift
+from skimage.io import imread, imsave
+from skimage import exposure
+
+def parse_args():
+    ap = argparse.ArgumentParser(
+        description='''Runs a 2D Fast Fourier Transform (FFT) on the given input image and .''')
+
+    ap.add_argument('infile',
+                    metavar='infile',
+                    type=argparse.FileType('r'),
+                    help='The image file to ingest.')
+
+    ap.add_argument('outfile',
+                    metavar='outfile',
+                    type=argparse.FileType('w'),
+                    help='A writeable filename that can accept 16 bit output.')
+    
+    ap.add_argument('--func',
+                    metavar='func',
+                    type=str,
+                    default='fft2',
+                    choices=['fft2', 'fftn'],
+                    help='Which FFT function to call; can currently choose fft2 or fftn.')
+    
+    return ap.parse_args()
+
+
+def log_adjust(nparray, adjustment):
+    '''A useful adjustment that kicks up the dark end without disturbing the white point http://www.imagemagick.org/Usage/transform/#evaluate_log.'''
+    return np.log1p(adjustment*nparray)/np.log1p(adjustment)
+
+# Perform a per-channel fft2
+def fft2RGB(RGB):
+    out = np.empty_like(RGB)
+    out[:,:,0] = np.absolute(fft2(RGB[:,:,0]))
+    out[:,:,1] = np.absolute(fft2(RGB[:,:,1]))
+    out[:,:,2] = np.absolute(fft2(RGB[:,:,2]))
+    return out
+
+def pfft(RGB, func='fft2'):
+    
+    if func=='fft2':
+        fft = fft2RGB
+    elif func=='fftn':
+        fft = fftn
+            
+    RGB = skimage.img_as_float(RGB)
+    # Get the magnitude (abs value) of the complex output.  The
+    # fftshift function puts the frequencies in the order that I like.
+    out = np.absolute(fftshift(fft(RGB), axes=(0,1)))
+
+    # Do a linear scaling to map out.max() to 1
+    disp = exposure.rescale_intensity(out, out_range=(0.0, 1.0))
+
+    # Apply a log transformation as per the ImageMagick documentation.
+    # The hueristic for the ideal adjustment is given here:
+    # http://www.imagemagick.org/Usage/fourier/
+    adjustment = np.exp(np.log(disp.mean())/np.log(0.5))
+    disp = log_adjust(disp, adjustment)
+
+    return disp
+
+def main():
+    args = parse_args()
+    result = pfft(imread(args.infile.name), args.func)
+
+    #TODO: maybe make the bit-depth etc. into an option
+    imsave(args.outfile.name, skimage.img_as_uint(result))
+
+if __name__ == '__main__':
+    main()

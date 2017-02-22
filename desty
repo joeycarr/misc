@@ -17,9 +17,11 @@ def parse_args():
         description='''Remove styles from input HTML fragments
                        leaving structural element intact.''')
     parser.add_argument('infile', nargs='?', type=argparse.FileType('r'),
-                    default=sys.stdin)
+                        help='Defaults to standard in.',
+                        default=sys.stdin)
     parser.add_argument('outfile', nargs='?', type=argparse.FileType('r'),
-                    default=sys.stdout)
+                        help='Defaults to standard out.',
+                        default=sys.stdout)
 
     return parser.parse_args();
 

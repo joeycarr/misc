@@ -37,7 +37,7 @@ def formattime(t):
     for d in DIVISORS:
         if t > 0:
             r.append( t % d )
-            t = t / d
+            t = t // d
     if len(r) < 2:
         r.append(0)
     return ':'.join(reversed( ['{:02d}'.format(x) for x in r] ))
@@ -58,7 +58,7 @@ def main():
         else:
             try:
                 total += sign * parsetime(term)
-            except ParseError, e:
+            except ParseError as e:
                 print("Unable to parse '{0}' as a time: {1}.".format(x, e))
                 sys.exit(1)
 

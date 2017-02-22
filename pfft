@@ -12,7 +12,7 @@ from skimage import exposure
 
 def parse_args():
     ap = argparse.ArgumentParser(
-        description='''Runs a 2D Fast Fourier Transform (FFT) on the given input image and .''')
+        description='''Runs a 2D Fast Fourier Transform (FFT) on the given input image. Depends on SciPy.''')
 
     ap.add_argument('infile',
                     metavar='infile',

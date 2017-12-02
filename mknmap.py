@@ -1,5 +1,35 @@
 #!/usr/bin/env python
 
+# usage: mknmap.py [-h] [-d] left right top bottom output
+#
+# This is a convenience script for creating a normal map from photographs. The
+# four input photographs should be lit along the cardinal axes. This works best
+# on surfaces with a matte finish and a uniform, light color. The illumination
+# should come from as low an angle as possible without causing self-shadowing.
+# If you prefix your file names so they sort in left, right, top, bottom order,
+# it is easier to invoke the utility with a glob, for example: `mknmap.py
+# inputs*.png output.png`.
+#
+# positional arguments:
+#   left           A readable file. Works best if this is in a linear (gamma =
+#                  1.0) colorspace. The first image should be lit from the left.
+#   right          The same scene lit from the right.
+#   top            The same scene lit from the top.
+#   bottom         The same scene lit from the bottom.
+#   output         A writeable file to place the normal map into. PNG files will
+#                  be truncated to 8 bits whereas TIFF files may go up to 64
+#                  bits. You can use any format suported by scikit-image; the
+#                  type is deduced from the suffix.
+#
+# optional arguments:
+#   -h, --help     show this help message and exit
+#   -d, --detrend  If this option is present, the utility will attempt to remove
+#                  any linear bias along the horizontal and vertical. This sort
+#                  of bias can result from the falloff of the light source. This
+#                  option works best when the frame is filled with a relatively
+#                  uniform texture. It does not work if there is an irregularly
+#                  shaped object in the frame.
+
 import argparse
 import numpy as np
 
